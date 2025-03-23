@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Calculadora de Razão de Masculinidade</title>
     <style>
+        /* Estilos mantidos iguais */
         body {
             font-family: Arial, sans-serif;
             background-color: #f4f4f4;
@@ -77,25 +78,38 @@
             let meninas = parseInt(document.getElementById("meninas").value);
             let total = meninos + meninas;
             
+            // Cálculo da Razão de Masculinidade (RMN)
             let rmn = (meninos / meninas) * 100;
-            let p = meninos / total;
-            let erroPadrao = Math.sqrt((p * (1 - p)) / total);
-            let margemErro = 1.96 * erroPadrao * 100;
-            let limiteInferior = rmn - margemErro;
-            let limiteSuperior = rmn + margemErro;
             
+            // Proporção de meninos (p)
+            let p = meninos / total;
+            
+            // Erro padrão e intervalo de confiança para p
+            let erroPadrao = Math.sqrt((p * (1 - p)) / total);
+            let margemErro = 1.96 * erroPadrao; // Margem de erro para p (sem multiplicar por 100)
+            
+            // Limites de confiança para p
+            let pLimiteInferior = p - margemErro;
+            let pLimiteSuperior = p + margemErro;
+            
+            // Conversão dos limites de p para RMN
+            let rmnInferior = (pLimiteInferior / (1 - pLimiteInferior)) * 100;
+            let rmnSuperior = (pLimiteSuperior / (1 - pLimiteSuperior)) * 100;
+            
+            // Interpretação
             let interpretacao = "";
-            if (limiteSuperior < 105) {
-                interpretacao = "A RMN está abaixo do esperado, indicando possível maior número de nascimentos femininos.Pode haver factores demográficos ou culturais influenciando os nascimentos.";
-            } else if (limiteInferior > 105) {
-                interpretacao = "A RMN está acima do esperado, indicando possível maior número de nascimentos masculinos.Isso pode indicar variações naturais ou problemas na recolha de dados.";
+            if (rmnSuperior < 105) {
+                interpretacao = "RMN abaixo do esperado. Possíveis fatores: sub-registro de nascimentos masculinos, preferências culturais ou metodologia de coleta.";
+            } else if (rmnInferior > 105) {
+                interpretacao = "RMN acima do esperado. Pode indicar variações naturais ou problemas na coleta de dados.";
             } else {
-                interpretacao = "A RMN está dentro do esperado, compatível com a média mundial de 105 meninos para cada 100 meninas.";
+                interpretacao = "RMN dentro da média global (105 meninos para 100 meninas).";
             }
             
+            // Exibição dos resultados
             document.getElementById("resultado").innerHTML = `
-                Razão de Masculinidade: ${rmn.toFixed(2)}<br>
-                Intervalo de Confiança (95%): (${limiteInferior.toFixed(2)} - ${limiteSuperior.toFixed(2)})<br>
+                Razão de Masculinidade: ${rmn.toFixed(1)}<br>
+                Intervalo de Confiança (95%): [${rmnInferior.toFixed(1)}, ${rmnSuperior.toFixed(1)}]<br>
                 <strong>Interpretação:</strong> ${interpretacao}
             `;
         }
