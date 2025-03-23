@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mapa de Migração Interativo</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css">
+    <style>
+        body { margin: 20px; font-family: Arial, sans-serif; }
+        #migrationMap { height: 500px; border: 1px solid #ddd; border-radius: 8px; }
+        .map-legend { padding: 10px; background: white; border-radius: 5px; box-shadow: 0 0 15px rgba(0,0,0,0.2); }
+        .legend-item { display: flex; align-items: center; margin: 5px 0; }
+    </style>
+</head>
+<body>
+    <h1>Fluxos Migratórios Globais</h1>
+    <div id="migrationMap"></div>
+
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script>
+        // Dados de migração atualizados
+        const migrationData = [
+            {
+                origin: { name: "Síria", coords: [35.2137, 38.5953] },
+                destination: { name: "Turquia", coords: [39.9208, 32.8541] },
+                amount: 3500000,
+                years: "2011-2023"
+            },
+            {
+                origin: { name: "Venezuela", coords: [6.4238, -66.5897] },
+                destination: { name: "Colômbia", coords: [4.5709, -74.2973] },
+                amount: 2400000,
+                years: "2015-2023"
+            },
+            {
+                origin: { name: "Ucrânia", coords: [48.3794, 31.1656] },
+                destination: { name: "Polônia", coords: [51.9194, 19.1451] },
+                amount: 7800000,
+                years: "2022-2023"
+            },
+            {
+                origin: { 
+                    name: "Moçambique",
+                    coords: [-18.665695, 35.529562]
+                },
+                destination: {
+                    name: "África do Sul",
+                    coords: [-25.7479, 28.2293]
+                },
+                amount: 850000,
+                years: "2000-2023"
+            },
+            {
+                origin: { 
+                    name: "Moçambique",
+                    coords: [-18.665695, 35.529562]
+                },
+                destination: {
+                    name: "Portugal",
+                    coords: [38.7223, -9.1393]
+                },
+                amount: 120000,
+                years: "1975-2023"
+            },
+            {
+                origin: { 
+                    name: "Moçambique",
+                    coords: [-18.665695, 35.529562]
+                },
+                destination: {
+                    name: "China",
+                    coords: [39.9042, 116.4074]
+                },
+                amount: 25000,
+                years: "2010-2023"
+            },
+            {
+                origin: { 
+                    name: "Nigéria",
+                    coords: [9.0820, 8.6753]
+                },
+                destination: {
+                    name: "Alemanha",
+                    coords: [51.1657, 10.4515]
+                },
+                amount: 180000,
+                years: "2015-2023"
+            }
+        ];
+
+        // Configuração do mapa
+        const map = L.map('migrationMap').setView([-15, 30], 3);
+
+        // Camada base do mapa
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        // Função para calcular a espessura da linha
+        function getFlowWidth(amount) {
+            return Math.log(amount / 50000) * 2;
+        }
+
+        // Função para gerar cores gradientes
+        function getColor(amount) {
+            return amount > 5000000 ? '#d73027' :
+                   amount > 1000000 ? '#fc8d59' :
+                   '#fee08b';
+        }
+
+        // Adicionar fluxos migratórios
+        migrationData.forEach((flow, index) => {
+            const connection = L.polyline(
+                [flow.origin.coords, flow.destination.coords],
+                {
+                    color: getColor(flow.amount),
+                    weight: getFlowWidth(flow.amount),
+                    opacity: 0.7
+                }
+            ).addTo(map);
+
+            // Marcadores
+            L.circleMarker(flow.origin.coords, {
+                radius: 8,
+                color: '#2c7bb6',
+                fillColor: '#2c7bb6'
+            }).bindPopup(`<b>${flow.origin.name}</b><br>Emigrantes: ${flow.amount.toLocaleString()}`).addTo(map);
+
+            L.circleMarker(flow.destination.coords, {
+                radius: 8,
+                color: '#1a9641',
+                fillColor: '#1a9641'
+            }).bindPopup(`<b>${flow.destination.name}</b><br>Imigrantes: ${flow.amount.toLocaleString()}`).addTo(map);
+
+            // Popup na linha
+            connection.bindPopup(`
+                <b>Rota:</b> ${flow.origin.name} → ${flow.destination.name}<br>
+                <b>Período:</b> ${flow.years}<br>
+                <b>Pessoas:</b> ${flow.amount.toLocaleString()}
+            `);
+
+            // Interatividade
+            connection.on('mouseover', function(e) {
+                this.setStyle({ opacity: 1 });
+                connection.openPopup();
+            });
+            
+            connection.on('mouseout', function(e) {
+                this.setStyle({ opacity: 0.7 });
+                connection.closePopup();
+            });
+        });
+
+        // Legenda
+        const legend = L.control({ position: 'bottomright' });
+        legend.onAdd = () => {
+            const div = L.DomUtil.create('div', 'map-legend');
+            div.innerHTML = `
+                <h4>Legenda</h4>
+                <div class="legend-item">
+                    <div style="background:#2c7bb6; width:15px; height:15px; border-radius:50%; margin-right:5px;"></div>
+                    Origem
+                </div>
+                <div class="legend-item">
+                    <div style="background:#1a9641; width:15px; height:15px; border-radius:50%; margin-right:5px;"></div>
+                    Destino
+                </div>
+                <div class="legend-item">
+                    <div style="background:#d73027; width:30px; height:3px; margin-right:5px;"></div>
+                    Grande fluxo (>5M)
+                </div>
+                <div class="legend-item">
+                    <div style="background:#fc8d59; width:20px; height:3px; margin-right:5px;"></div>
+                    Fluxo médio (1-5M)
+                </div>
+                <div class="legend-item">
+                    <div style="background:#fee08b; width:10px; height:3px; margin-right:5px;"></div>
+                    Pequeno fluxo (<1M)
+                </div>
+            `;
+            return div;
+        };
+        legend.addTo(map);
+
+        // Controles de zoom
+        L.control({
+            position: 'topleft'
+        }).onAdd = function() {
+            const div = L.DomUtil.create('div', 'map-controls');
+            div.innerHTML = migrationData.map((flow, index) => `
+                <button onclick="map.flyToBounds(L.latLngBounds([
+                    [${flow.origin.coords}],
+                    [${flow.destination.coords}]
+                ]), {padding: [50, 50]})" style="margin:2px;">
+                    ${flow.origin.name} → ${flow.destination.name}
+                </button>`
+            ).join('<br>');
+            return div;
+        }.addTo(map);
+    </script>
+</body>
+</html>

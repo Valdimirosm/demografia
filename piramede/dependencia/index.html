@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador de Pirâmide Etária</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.1/chart.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; background-color: #f4f4f4; }
+        .container { max-width: 600px; margin: auto; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); }
+        label, input, button { display: block; width: 100%; margin: 10px 0; }
+        button { background-color: #007bff; color: white; padding: 10px; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background-color: #0056b3; }
+        canvas { margin-top: 20px; }
+        .results { margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 5px; text-align: left; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Simulador de Pirâmide Etária</h1>
+        <label>Faixa Etária:</label>
+        <input type="text" id="ageGroup" placeholder="Ex: 0-4, 5-9...">
+        <label>População Masculina:</label>
+        <input type="number" id="malePopulation" placeholder="Número de homens">
+        <label>População Feminina:</label>
+        <input type="number" id="femalePopulation" placeholder="Número de mulheres">
+        <button onclick="addData()">Adicionar Dados</button>
+        <canvas id="pyramidChart"></canvas>
+        <div class="results" id="dependencyRates"></div>
+    </div>
+
+    <script>
+        let ageLabels = [];
+        let maleData = [];
+        let femaleData = [];
+        let youngTotal = 0;
+        let workingAgeTotal = 0;
+        let elderlyTotal = 0;
+
+        function categorizeAgeGroup(ageGroup, population) {
+            const ageRange = ageGroup.split(/[-+]/);
+            const lowerBound = parseInt(ageRange[0]);
+            const upperBound = ageRange[1] ? parseInt(ageRange[1]) : Infinity;
+
+            if (upperBound <= 14) {
+                youngTotal += population;
+            } else if (lowerBound >= 15 && upperBound <= 64) {
+                workingAgeTotal += population;
+            } else if (lowerBound >= 65) {
+                elderlyTotal += population;
+            }
+        }
+
+        function calculateDependency() {
+            let youthDependency = 0;
+            let elderlyDependency = 0;
+            let totalDependency = 0;
+
+            if (workingAgeTotal > 0) {
+                youthDependency = (youngTotal / workingAgeTotal) * 100;
+                elderlyDependency = (elderlyTotal / workingAgeTotal) * 100;
+                totalDependency = youthDependency + elderlyDependency;
+            }
+
+            return {
+                youth: youthDependency,
+                elderly: elderlyDependency,
+                total: totalDependency
+            };
+        }
+
+        function addData() {
+            let ageGroup = document.getElementById("ageGroup").value;
+            let malePopulation = Math.abs(parseInt(document.getElementById("malePopulation").value));
+            let femalePopulation = parseInt(document.getElementById("femalePopulation").value);
+
+            if (ageGroup && !isNaN(malePopulation) && !isNaN(femalePopulation)) {
+                // Categoriza a população
+                categorizeAgeGroup(ageGroup, malePopulation + femalePopulation);
+
+                // Atualiza o gráfico
+                ageLabels.unshift(ageGroup);
+                maleData.unshift(-malePopulation);
+                femaleData.unshift(femalePopulation);
+                updateChart();
+
+                // Atualiza os cálculos
+                const rates = calculateDependency();
+                document.getElementById("dependencyRates").innerHTML = `
+                    <h3>Taxas de Dependência:</h3>
+                    <p>Jovens (0-14): ${rates.youth.toFixed(2)}%</p>
+                    <p>Idosos (65+): ${rates.elderly.toFixed(2)}%</p>
+                    <p>Dependência Total: ${rates.total.toFixed(2)}%</p>
+                    <p>População Ativa (15-64): ${workingAgeTotal} pessoas</p>
+                `;
+            } else {
+                alert("Preencha todos os campos corretamente.");
+            }
+        }
+
+        function updateChart() {
+            let ctx = document.getElementById("pyramidChart").getContext("2d");
+            if (window.myChart) window.myChart.destroy();
+
+            window.myChart = new Chart(ctx, {
+                type: "bar",
+                data: {
+                    labels: ageLabels,
+                    datasets: [
+                        { label: "Masculino", data: maleData, backgroundColor: "blue" },
+                        { label: "Feminino", data: femaleData, backgroundColor: "pink" }
+                    ]
+                },
+                options: {
+                    indexAxis: "y",
+                    responsive: true,
+                    scales: {
+                        x: { 
+                            stacked: true,
+                            ticks: {
+                                callback: function(value) { return Math.abs(value); }
+                            }
+                        },
+                        y: { stacked: true }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>

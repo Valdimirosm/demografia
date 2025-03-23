@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador de Estimativa Populacional de Moçambique</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+        }
+        #formulario {
+            width: 30%;
+            padding: 20px;
+            background-color: #f9f9f9;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        #mapa {
+            width: 70%;
+            height: 100%;
+        }
+        form {
+            width: 100%;
+        }
+        label {
+            display: block;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+        input, button {
+            width: 100%;
+            padding: 10px;
+            margin-top: 5px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .result {
+            margin-top: 20px;
+            width: 100%;
+            overflow-x: auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            padding: 10px;
+            text-align: center;
+            border: 1px solid #ddd;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
+    
+</head>
+<body>
+    <h1>Simulador de Estimativa Populacional de Moçambique</h1>
+    <form id="simulador-form">
+        <label for="populacao-inicial">População Inicial (milhões):</label>
+        <input type="number" id="populacao-inicial" value="32.37" step="0.01" required>
+
+        <label for="taxa-fecundidade">Taxa de Fecundidade (filhos por mulher):</label>
+        <input type="number" id="taxa-fecundidade" value="4.9" step="0.1" required>
+
+        <label for="taxa-mortalidade">Taxa de Mortalidade (por 1000 habitantes):</label>
+        <input type="number" id="taxa-mortalidade" value="9.0" step="0.1" required>
+
+        <label for="taxa-migracao">Taxa de Migração Líquida (por 1000 habitantes):</label>
+        <input type="number" id="taxa-migracao" value="-0.5" step="0.1" required>
+
+        <label for="consumo-agua">Consumo Médio de Água (litros por pessoa por dia):</label>
+        <input type="number" id="consumo-agua" value="50" step="1" required>
+
+        <label for="consumo-energia">Consumo Médio de Energia (kWh por pessoa por ano):</label>
+        <input type="number" id="consumo-energia" value="500" step="10" required>
+
+        <label for="taxa-matricula">Taxa de Matrícula Escolar (%):</label>
+        <input type="number" id="taxa-matricula" value="80" step="1" required>
+
+        <label for="anos-projecao">Anos de Projeção:</label>
+        <input type="number" id="anos-projecao" value="10" required>
+
+        <button type="button" onclick="simularProjecao()">Simular Projeção</button>
+    </form>
+
+    <div class="result" id="resultado"></div>
+
+    <script>
+        function simularProjecao() {
+            // Obtém os valores de entrada
+            let populacaoInicial = parseFloat(document.getElementById('populacao-inicial').value) * 1e6;
+            let taxaFecundidade = parseFloat(document.getElementById('taxa-fecundidade').value);
+            let taxaMortalidade = parseFloat(document.getElementById('taxa-mortalidade').value) / 1000;
+            let taxaMigracao = parseFloat(document.getElementById('taxa-migracao').value) / 1000;
+            let consumoAgua = parseFloat(document.getElementById('consumo-agua').value);
+            let consumoEnergia = parseFloat(document.getElementById('consumo-energia').value);
+            let taxaMatricula = parseFloat(document.getElementById('taxa-matricula').value) / 100;
+            let anosProjecao = parseInt(document.getElementById('anos-projecao').value);
+
+            // Taxa de crescimento natural (natalidade - mortalidade)
+            let taxaNatalidade = (taxaFecundidade * 0.02); // Aproximação simplificada
+            let taxaCrescimentoNatural = taxaNatalidade - taxaMortalidade;
+
+            // Inicializa variáveis
+            let populacao = populacaoInicial;
+            let resultadoHTML = `<h2>Projeções para os próximos ${anosProjecao} anos:</h2><table border="1"><tr><th>Ano</th><th>População (milhões)</th><th>Consumo Total de Água (milhões de litros/dia)</th><th>Consumo Total de Energia (GWh/ano)</th><th>Número de Estudantes Matriculados (milhões)</th></tr>`;
+
+            // Loop de projeção anual
+            for (let ano = 1; ano <= anosProjecao; ano++) {
+                // Calcula a nova população
+                populacao = populacao * (1 + taxaCrescimentoNatural + taxaMigracao);
+
+                // Calcula os consumos e número de matriculados
+                let consumoTotalAgua = (populacao * consumoAgua) / 1e6; // em milhões de litros por dia
+                let consumoTotalEnergia = (populacao * consumoEnergia) / 1e9; // em GWh por ano
+                let numeroMatriculados = (populacao * taxaMatricula) / 1e6; // em milhões
+
+                // Adiciona os resultados ao HTML
+                resultadoHTML += `<tr><td>${ano}</td><td>${(populacao / 1e6).toFixed(2)}</td><td>${consumoTotalAgua.toFixed(2)}</td><td>${consumoTotalEnergia.toFixed(2)}</td><td>${numeroMatriculados.toFixed(2)}</td></tr>`;
+            }
+
+            resultadoHTML += '</table>';
+            document.getElementById('resultado').innerHTML = resultadoHTML;
+        }
+    </script>
+</body>
+</html>

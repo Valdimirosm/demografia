@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora de Razão de Masculinidade</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            width: 350px;
+        }
+        h2 {
+            color: #333;
+        }
+        label {
+            font-weight: bold;
+            display: block;
+            margin-top: 10px;
+        }
+        input {
+            width: 100%;
+            padding: 8px;
+            margin-top: 5px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            text-align: center;
+        }
+        button {
+            background-color: #28a745;
+            color: white;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 15px;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #218838;
+        }
+        #resultado {
+            margin-top: 15px;
+            font-size: 16px;
+            font-weight: bold;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Calculadora de Razão de Masculinidade</h2>
+        <label>Quantidade de meninos:</label>
+        <input type="number" id="meninos" value="417">
+        <label>Quantidade de meninas:</label>
+        <input type="number" id="meninas" value="683">
+        <button onclick="calcularRMN()">Calcular</button>
+        <p id="resultado"></p>
+    </div>
+    
+    <script>
+        function calcularRMN() {
+            let meninos = parseInt(document.getElementById("meninos").value);
+            let meninas = parseInt(document.getElementById("meninas").value);
+            let total = meninos + meninas;
+            
+            let rmn = (meninos / meninas) * 100;
+            let p = meninos / total;
+            let erroPadrao = Math.sqrt((p * (1 - p)) / total);
+            let margemErro = 1.96 * erroPadrao * 100;
+            let limiteInferior = rmn - margemErro;
+            let limiteSuperior = rmn + margemErro;
+            
+            let interpretacao = "";
+            if (limiteSuperior < 105) {
+                interpretacao = "A RMN está abaixo do esperado, indicando possível maior número de nascimentos femininos.Pode haver factores demográficos ou culturais influenciando os nascimentos.";
+            } else if (limiteInferior > 105) {
+                interpretacao = "A RMN está acima do esperado, indicando possível maior número de nascimentos masculinos.Isso pode indicar variações naturais ou problemas na recolha de dados.";
+            } else {
+                interpretacao = "A RMN está dentro do esperado, compatível com a média mundial de 105 meninos para cada 100 meninas.";
+            }
+            
+            document.getElementById("resultado").innerHTML = `
+                Razão de Masculinidade: ${rmn.toFixed(2)}<br>
+                Intervalo de Confiança (95%): (${limiteInferior.toFixed(2)} - ${limiteSuperior.toFixed(2)})<br>
+                <strong>Interpretação:</strong> ${interpretacao}
+            `;
+        }
+    </script>
+</body>
+</html>

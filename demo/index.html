@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Demografia Avançada - Análise Populacional</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css">
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .dashboard { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .card { padding: 20px; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 20px; }
+        .map-container { height: 400px; }
+        .slider-container { margin: 15px 0; }
+        #populationPyramid { background-color: #f5f5f5; padding: 15px; }
+        .bar { fill: steelblue; }
+        .axis text { font-size: 12px; }
+        .data-table { margin-top: 20px; width: 100%; border-collapse: collapse; }
+        .data-table td, .data-table th { border: 1px solid #ddd; padding: 8px; }
+    </style>
+</head>
+<body>
+    <h1>Análise Demográfica Avançada</h1>
+    
+    <div class="dashboard">
+        <!-- Seção 1: Pirâmide Etária Interativa -->
+        <div class="card">
+            <h2>Pirâmide Populacional Dinâmica</h2>
+            <div class="slider-container">
+                <label>Ano: <input type="range" id="yearSlider" min="1950" max="2050" value="2023"></label>
+                <span id="yearValue">2023</span>
+            </div>
+            <div id="populationPyramid"></div>
+        </div>
+
+        <!-- Seção 2: Transição Demográfica -->
+        <div class="card">
+            <h2>Modelo de Transição Demográfica</h2>
+            <canvas id="transitionChart"></canvas>
+            <div class="slider-container">
+                <label>Taxa de Fertilidade: <input type="range" id="fertilitySlider" min="1" max="8" value="5"></label>
+                <label>Taxa de Mortalidade: <input type="range" id="mortalitySlider" min="5" max="40" value="25"></label>
+            </div>
+        </div>
+
+        <!-- Seção 3: Migração Internacional -->
+        <div class="card">
+            <h2>Fluxos Migratórios Globais</h2>
+            <div class="map-container" id="migrationMap"></div>
+        </div>
+
+        <!-- Seção 4: Projeções Populacionais -->
+        <div class="card">
+            <h2>Projeção Populacional por Cohort</h2>
+            <canvas id="cohortChart"></canvas>
+            <button onclick="runProjection()">Calcular Projeção</button>
+        </div>
+    </div>
+
+    <!-- Seção de Análise de Dados -->
+    <div class="card">
+        <h2>Análise de Dados Demográficos</h2>
+        <div id="dataTable"></div>
+        <div id="regressionAnalysis" style="margin-top: 20px;"></div>
+    </div>
+
+    <script>
+        // Dados e configurações globais
+        let transitionChart;
+        let cohortChart;
+        const migrationData = [
+            { from: [51.5074, -0.1278], to: [40.7128, -74.0060], amount: 50000 }, // Londres -> NY
+            { from: [48.8566, 2.3522], to: [19.4326, -99.1332], amount: 30000 },  // Paris -> Cidade do México
+            { from: [35.6762, 139.6503], to: [22.3193, 114.1694], amount: 45000 } // Tóquio -> Hong Kong
+        ];
+
+        // 1. Pirâmide Etária Interativa
+        function updatePyramid(year) {
+            d3.select("#populationPyramid").html("");
+            
+            const width = 600, height = 400;
+            const svg = d3.select("#populationPyramid")
+                          .append("svg")
+                          .attr("width", width)
+                          .attr("height", height);
+
+            const data = Array.from({length: 20}, (_,i) => ({
+                age: `${i*5}-${(i+1)*5-1}`,
+                male: Math.random() * 1000000,
+                female: Math.random() * 1000000
+            }));
+
+            const xScale = d3.scaleLinear()
+                             .domain([0, d3.max(data, d => Math.max(d.male, d.female)])
+                             .range([0, width/2 - 20]);
+
+            const yScale = d3.scaleBand()
+                             .domain(data.map(d => d.age))
+                             .range([height, 0])
+                             .padding(0.1);
+
+            // Barras masculinas
+            svg.selectAll(".male")
+               .data(data)
+               .enter()
+               .append("rect")
+               .attr("class", "bar male")
+               .attr("x", width/2)
+               .attr("y", d => yScale(d.age))
+               .attr("width", d => xScale(d.male))
+               .attr("height", yScale.bandwidth())
+               .attr("fill", "steelblue");
+
+            // Barras femininas
+            svg.selectAll(".female")
+               .data(data)
+               .enter()
+               .append("rect")
+               .attr("class", "bar female")
+               .attr("x", width/2 - xScale(d => d.female))
+               .attr("y", d => yScale(d.age))
+               .attr("width", d => xScale(d.female))
+               .attr("height", yScale.bandwidth())
+               .attr("fill", "pink");
+
+            // Eixos
+            svg.append("g")
+               .attr("transform", `translate(${width/2}, 0)`)
+               .call(d3.axisLeft(yScale));
+
+            svg.append("g")
+               .attr("transform", `translate(0, ${height})`)
+               .call(d3.axisBottom(xScale).ticks(5));
+        }
+
+        // 2. Modelo de Transição Demográfica
+        function initTransitionChart() {
+            const ctx = document.getElementById('transitionChart').getContext('2d');
+            transitionChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['Pré-Transição', 'Inicial', 'Tardia', 'Pós-Transição'],
+                    datasets: [{
+                        label: 'Taxa de Natalidade',
+                        data: [45, 35, 20, 12],
+                        borderColor: 'blue',
+                        tension: 0.4
+                    },{
+                        label: 'Taxa de Mortalidade',
+                        data: [40, 30, 15, 10],
+                        borderColor: 'red',
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { position: 'top' }
+                    }
+                }
+            });
+        }
+
+        // 3. Mapa de Migração
+        function initMigrationMap() {
+            const map = L.map('migrationMap').setView([30, 0], 2);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+            migrationData.forEach(route => {
+                L.polyline([route.from, route.to], {color: 'red'}).addTo(map)
+                 .bindPopup(`Migração: ${route.amount.toLocaleString()} pessoas`);
+                
+                L.circleMarker(route.from, {radius: 6, color: 'blue'}).addTo(map);
+                L.circleMarker(route.to, {radius: 6, color: 'green'}).addTo(map);
+            });
+        }
+
+        // 4. Projeções Populacionais
+        function runProjection() {
+            const years = Array.from({length: 10}, (_,i) => 2023 + i);
+            const data = years.map(year => ({
+                year: year,
+                population: 7.9 * Math.pow(1.01, year - 2023) // Simulação de crescimento
+            }));
+
+            if(cohortChart) cohortChart.destroy();
+            
+            const ctx = document.getElementById('cohortChart').getContext('2d');
+            cohortChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: years,
+                    datasets: [{
+                        label: 'População (bilhões)',
+                        data: data.map(d => d.population),
+                        borderColor: 'green',
+                        fill: false
+                    }]
+                }
+            });
+        }
+
+        // 5. Análise de Dados
+        function updateDataAnalysis() {
+            const table = `<table class="data-table">
+                <tr><th>País</th><th>População</th><th>Taxa de Crescimento</th></tr>
+                ${['Brasil', 'EUA', 'China'].map(country => `
+                    <tr>
+                        <td>${country}</td>
+                        <td>${(Math.random() * 1000).toFixed(2)} milhões</td>
+                        <td>${(Math.random() * 2).toFixed(2)}%</td>
+                    </tr>
+                `).join('')}
+            </table>`;
+
+            const regression = `<div style="margin-top: 20px;">
+                <strong>Análise de Regressão:</strong>
+                <p>Modelo: y = ${(Math.random() * 0.5).toFixed(2)}x + ${(Math.random() * 2).toFixed(2)}</p>
+                <p>R² = ${(Math.random() * 0.2 + 0.8).toFixed(2)}</p>
+            </div>`;
+
+            document.getElementById('dataTable').innerHTML = table;
+            document.getElementById('regressionAnalysis').innerHTML = regression;
+        }
+
+        // Event Listeners
+        document.getElementById('yearSlider').oninput = function() {
+            document.getElementById('yearValue').textContent = this.value;
+            updatePyramid(this.value);
+        };
+
+        document.getElementById('fertilitySlider').oninput = function() {
+            transitionChart.data.datasets[0].data = [this.value, this.value-5, this.value-10, this.value-15];
+            transitionChart.update();
+        };
+
+        document.getElementById('mortalitySlider').oninput = function() {
+            transitionChart.data.datasets[1].data = [this.value, this.value-5, this.value-10, this.value-15];
+            transitionChart.update();
+        };
+
+        // Inicialização
+        updatePyramid(2023);
+        initTransitionChart();
+        initMigrationMap();
+        updateDataAnalysis();
+    </script>
+
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+</body>
+</html>
